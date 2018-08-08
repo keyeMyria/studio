@@ -1,3 +1,5 @@
+# Assert methods can be found here: https://docs.python.org/3/library/unittest.html#assert-methods
+
 import json
 import md5
 import os
@@ -12,11 +14,13 @@ from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.test import TestCase
 from rest_framework.authtoken.models import Token
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APIClient, APIRequestFactory, force_authenticate, APITestCase
 from django.test.utils import override_settings
 from mixer.backend.django import mixer
 
 from contentcuration import models as cc
+from contentcuration.tests.base import StudioTestCase, StudioAPITestCase
+from contentcuration.utils import minio_utils
 from le_utils.constants import format_presets
 pytestmark = pytest.mark.django_db
 
@@ -107,7 +111,13 @@ def node(data, parent=None):
     new_node = None
     # Create topics
     if data['kind_id'] == "topic":
-        new_node = cc.ContentNode(kind=topic(), parent=parent, title=data['title'], node_id=data['node_id'])
+        new_node = cc.ContentNode(
+            kind=topic(),
+            parent=parent,
+            title=data['title'],
+            node_id=data['node_id'],
+            content_id=data.get('content_id') or data['node_id'],
+        )
         new_node.save()
 
         for child in data['children']:
@@ -115,7 +125,14 @@ def node(data, parent=None):
 
     # Create videos
     elif data['kind_id'] == "video":
-        new_node = cc.ContentNode(kind=video(), parent=parent, title=data['title'], node_id=data['node_id'], license=license_wtfpl())
+        new_node = cc.ContentNode(
+            kind=video(),
+            parent=parent,
+            title=data['title'],
+            node_id=data['node_id'],
+            license=license_wtfpl(),
+            content_id=data.get('content_id') or data['node_id'],
+        )
         new_node.save()
         video_file = fileobj_video(contents="Video File").next()
         video_file.contentnode = new_node
@@ -125,25 +142,43 @@ def node(data, parent=None):
     # Create exercises
     elif data['kind_id'] == "exercise":
         extra_fields = "{{\"mastery_model\":\"{}\",\"randomize\":true,\"m\":{},\"n\":{}}}".format(data['mastery_model'], data.get('m') or 0, data.get('n') or 0)
-        new_node = cc.ContentNode(kind=exercise(), parent=parent, title=data['title'], node_id=data['node_id'], license=license_wtfpl(), extra_fields=extra_fields)
+        new_node = cc.ContentNode(
+            kind=exercise(),
+            parent=parent,
+            title=data['title'],
+            node_id=data['node_id'],
+            license=license_wtfpl(),
+            extra_fields=extra_fields,
+            content_id=data.get('content_id') or data['node_id'],
+        )
         new_node.save()
         for assessment_item in data['assessment_items']:
-            mixer.blend(cc.AssessmentItem,
+            ai = cc.AssessmentItem(
                 contentnode=new_node,
                 assessment_id=assessment_item['assessment_id'],
                 question=assessment_item['question'],
                 type=assessment_item['type'],
-                answers=json.dumps(assessment_item['answers'])
+                answers=json.dumps(assessment_item['answers']),
+                hints=json.dumps(assessment_item.get('answers') or []),
             )
+            ai.save()
+
+    if data.get('tags'):
+        for tag in data['tags']:
+            t = cc.ContentTag(tag_name=tag['tag_name'])
+            t.save()
+            new_node.tags.add(t)
+            new_node.save()
 
     return new_node
 
+@pytest.fixture
 def channel():
     channel = cc.Channel.objects.create(name="testchannel")
     channel.save()
 
     # Read from json fixture
-    filepath = os.path.dirname(__file__) + os.path.sep + "tree.json"
+    filepath = os.path.sep.join([os.path.dirname(__file__), "fixtures", "tree.json"])
     with open(filepath, "rb") as jsonfile:
         data = json.load(jsonfile)
 
@@ -152,6 +187,7 @@ def channel():
 
     return channel
 
+@pytest.fixture
 def user():
     user = cc.User.objects.create(email='user@test.com')
     user.set_password('password')
@@ -163,22 +199,55 @@ class BaseTestCase(TestCase):
     def setUpClass(self):
         super(BaseTestCase, self).setUpClass()
         call_command('loadconstants')
+        minio_utils.ensure_storage_bucket_public()
         self.channel = channel()
         self.user = user()
         self.channel.main_tree.refresh_from_db()
+
+    def setUp(self):
+        minio_utils.ensure_storage_bucket_public()
+
+    def tearDown(self):
+        minio_utils.ensure_bucket_deleted()
+
+    @classmethod
+    def tearDownClass(self):
+        minio_utils.ensure_bucket_deleted()
 
 class BaseAPITestCase(APITestCase):
     @classmethod
     def setUpClass(self):
         super(BaseAPITestCase, self).setUpClass()
         call_command('loadconstants')
+        minio_utils.ensure_storage_bucket_public()
         self.channel = channel()
         self.user = user()
+        token, _new = Token.objects.get_or_create(user=self.user)
+        self.header = {"Authorization": "Token {0}".format(token)}
         self.client = APIClient()
         self.client.force_authenticate(self.user)
         self.channel.main_tree.refresh_from_db()
 
+    def setUp(self):
+        minio_utils.ensure_storage_bucket_public()
+
+    def tearDown(self):
+        minio_utils.ensure_bucket_deleted()
+
     @classmethod
-    def get(self, url):
-        token, _new = Token.objects.get_or_create(user=self.user)
-        return self.client.get(url, headers={"Authorization": "Token {0}".format(token)})
+    def tearDownClass(self):
+        minio_utils.ensure_bucket_deleted()
+
+    def create_get_request(self, url, *args, **kwargs):
+        factory = APIRequestFactory()
+        request = factory.get(url, headers=self.header, *args, **kwargs)
+        request.user = self.user
+        force_authenticate(request, user=self.user)
+        return request
+
+    def create_post_request(self, url, *args, **kwargs):
+        factory = APIRequestFactory()
+        request = factory.post(url, headers=self.header, *args, **kwargs)
+        request.user = self.user
+        force_authenticate(request, user=self.user)
+        return request
