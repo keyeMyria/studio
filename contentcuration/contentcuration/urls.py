@@ -351,7 +351,8 @@ if settings.DEBUG:
     urlpatterns += [
         url(r'^' + settings.STORAGE_URL[1:] + '(?P<path>.*)$', file_views.debug_serve_file, name='debug_serve_file'),
         url(r'^' + settings.CONTENT_DATABASE_URL[1:] + '(?P<path>.*)$', file_views.debug_serve_content_database_file, name='content_database_debug_serve_file'),
-        url(r'^' + settings.CSV_URL[1:] + '(?P<path>.*)$', file_views.debug_serve_file, name='csv_debug_serve_file')
+        url(r'^' + settings.CSV_URL[1:] + '(?P<path>.*)$', file_views.debug_serve_file, name='csv_debug_serve_file'),  # this seems broken since CSVs dont use content storage
+        url(r'^' + settings.JSON_URL[1:] + '(?P<path>.*)$', django_views.static.serve, {'document_root': settings.JSON_ROOT})
     ]
 
     try:
