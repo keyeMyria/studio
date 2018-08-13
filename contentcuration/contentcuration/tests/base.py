@@ -48,6 +48,11 @@ class StudioTestCase(TestCase, BucketTestMixin):
         call_command('loadconstants')
         cls.admin_user = User.objects.create_superuser('big_shot', 'bigshot@reallybigcompany.com', 'password')
 
+    @classmethod
+    def tearDownClass(cls):
+        # Based on comments here: https://groups.google.com/forum/#!topic/django-users/MDRcg4Fur98
+        pass
+
     def setUp(self):
         if not self.persist_bucket:
             self.create_bucket()
