@@ -160,7 +160,7 @@ def channel():
 
 
 def user():
-    user = cc.User.objects.create(email='user@test.com')
+    user, _new = cc.User.objects.get_or_create(email='user@test.com')
     user.set_password('password')
     user.is_active = True
     user.save()
