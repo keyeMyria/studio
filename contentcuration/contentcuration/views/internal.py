@@ -33,7 +33,6 @@ from contentcuration.models import AssessmentItem
 from contentcuration.models import Channel
 from contentcuration.models import ContentNode
 from contentcuration.models import ContentTag
-from contentcuration.models import CONTENT_METADATA_FIELDS
 from contentcuration.models import generate_object_storage_name
 from contentcuration.models import get_next_sort_order
 from contentcuration.models import License
