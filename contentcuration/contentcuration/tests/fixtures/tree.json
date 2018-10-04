@@ -34,11 +34,11 @@
 					"kind_id": "video",
 					"title": "Video 4"
 				},
-                {
-                    "node_id": "00000000000000000000000000000011",
-                    "kind_id": "video",
-                    "title": "Video 5"
-                }
+        {
+            "node_id": "00000000000000000000000000000011",
+            "kind_id": "video",
+            "title": "Video 5"
+        }
 			]
 		},
 		{
@@ -67,6 +67,10 @@
 									"correct": false,
 									"help_text": ""
 								}
+							],
+              "hints": [
+                "This is the first hint",
+                "This is the second hint"
 							]
 						},
 						{
@@ -89,6 +93,10 @@
 									"correct": false,
 									"help_text": ""
 								}
+							],
+              "hints": [
+                "This is the first hint",
+                "This is the second hint"
 							]
 						},
 						{

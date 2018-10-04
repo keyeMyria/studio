@@ -914,7 +914,10 @@ def create_exercises(user, node, data):
             question_obj.save()
             map_files_to_assessment_item(user, question_obj, question['files'])
 
-""" Diff functions """
+
+#  Diff functions
+################################################################################
+
 def set_node_diff(node, channel):
     """ Get a dict of changed fields between the main tree and the staging tree, setting changed field accordingly """
     descendants = channel.main_tree.get_descendants().prefetch_related('files', 'tags', 'assessment_items').select_related("parent")
@@ -941,7 +944,7 @@ def get_node_diff(node, original_node):
     }
 
     # Check for file changes
-    file_diff = get_file_diff(node, original_node)
+    file_diff = get_file_diff2(node, original_node)
     if file_diff.items():
         changed_fields.update({"files": file_diff})
 
@@ -958,7 +961,7 @@ def get_node_diff(node, original_node):
     return changed_fields
 
 
-def get_file_diff(node, original_node):
+def get_file_diff2(node, original_node):
     file_diff = {}
 
     # Get new files
@@ -1042,3 +1045,4 @@ def get_assessment_item_diff(node, original_node):
         ai_diff.update({"deleted": [dict(item) for item in deleted_ais]})
 
     return ai_diff
+

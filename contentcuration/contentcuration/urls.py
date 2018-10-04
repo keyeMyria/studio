@@ -22,6 +22,7 @@ from django.contrib.auth import views as auth_views
 from django.core.urlresolvers import reverse_lazy
 from django.db.models import Q
 from django.views.i18n import javascript_catalog
+from django.views.static import serve as django_static_serve
 from rest_framework import routers
 from rest_framework import viewsets
 from rest_framework_bulk.generics import BulkModelViewSet
@@ -352,7 +353,7 @@ if settings.DEBUG:
         url(r'^' + settings.STORAGE_URL[1:] + '(?P<path>.*)$', file_views.debug_serve_file, name='debug_serve_file'),
         url(r'^' + settings.CONTENT_DATABASE_URL[1:] + '(?P<path>.*)$', file_views.debug_serve_content_database_file, name='content_database_debug_serve_file'),
         url(r'^' + settings.CSV_URL[1:] + '(?P<path>.*)$', file_views.debug_serve_file, name='csv_debug_serve_file'),  # this seems broken since CSVs dont use content storage
-        url(r'^' + settings.JSON_URL[1:] + '(?P<path>.*)$', django_views.static.serve, {'document_root': settings.JSON_ROOT})
+        url(r'^' + settings.JSON_URL[1:] + '(?P<path>.*)$', django_static_serve, {'document_root': settings.JSON_ROOT})
     ]
 
     try:

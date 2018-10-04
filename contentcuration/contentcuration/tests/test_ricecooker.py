@@ -1,14 +1,19 @@
 from cStringIO import StringIO
-
-import pytest
-from contentcuration.tests.testcase import BaseAPITestCase, node, fileobj_video, channel
 from django.core.urlresolvers import reverse_lazy
+import pytest
 
-from contentcuration import models as cc
-from contentcuration.views.internal import get_full_node_diff, set_node_diff, get_full_node_diff_endpoint
 from le_utils.constants import format_presets
+from contentcuration import models as cc
+from contentcuration.tests.base import BaseAPITestCase
+from contentcuration.tests.testdata import fileobj_video
+from contentcuration.tests.testdata import channel
+from contentcuration.tests.testdata import node
+from contentcuration.views.internal import get_full_node_diff
+from contentcuration.views.internal import set_node_diff
+from contentcuration.views.internal import get_full_node_diff_endpoint
+from contentcuration.utils import minio_utils
 
-pytestmark = pytest.mark.django_db
+
 
 STAGED_TREE = {
     "node_id": "00000000000000000000000000000000",
@@ -145,7 +150,7 @@ def staging_tree():
     # Update file
     updated_file_node = staging_tree.get_descendants().filter(node_id='00000000000000000000000000000006').first()
     updated_file_node.files.first().delete()
-    new_video_file = fileobj_video(contents="Updated").next()
+    new_video_file = fileobj_video(contents="Updated")
     new_video_file.contentnode = updated_file_node
     new_video_file.preset_id = format_presets.VIDEO_HIGH_RES
     new_video_file.save()
@@ -156,19 +161,31 @@ def staging_tree():
 
     # Add file
     updated_file_node = staging_tree.get_descendants().filter(node_id='00000000000000000000000000000007').first()
-    new_video_file = fileobj_video().next()
+    new_video_file = fileobj_video()
     new_video_file.contentnode = updated_file_node
     new_video_file.preset_id = format_presets.VIDEO_LOW_RES
     new_video_file.save()
 
     return staging_tree
 
+
+
+
 class NodeDiffTestCase(BaseAPITestCase):
     persist_bucket = True
 
     @classmethod
-    def setUpClass(self):
-        super(NodeDiffTestCase, self).setUpClass()
+    def setUpClass(cls):
+        super(NodeDiffTestCase, cls).setUpClass()
+        minio_utils.ensure_storage_bucket_public(will_sleep=False)
+
+    @classmethod
+    def teardDownClass(cls):
+        super(NodeDiffTestCase, cls).teardDownClass()
+        minio_utils.ensure_bucket_deleted()
+
+    def setUp(self):
+        super(NodeDiffTestCase, self).setUp()
         self.channel.staging_tree = staging_tree()
         self.channel.save()
 

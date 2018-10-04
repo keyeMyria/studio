@@ -50,8 +50,8 @@ class StudioTestCase(TestCase, BucketTestMixin):
 
     @classmethod
     def tearDownClass(cls):
-        # Based on comments here: https://groups.google.com/forum/#!topic/django-users/MDRcg4Fur98
-        pass
+        super(StudioTestCase, cls).tearDownClass()  # https://stackoverflow.com/questions/45212458/django-tests-failing-to-install-a-fixture-after-adding-one-more-testcase
+        # pass  # Based on comments here: https://groups.google.com/forum/#!topic/django-users/MDRcg4Fur98
 
     def setUp(self):
         if not self.persist_bucket:
@@ -135,6 +135,13 @@ class BaseAPITestCase(StudioAPITestCase):
 
     def put(self, url, data, format='json'):
         return self.client.put(url, data, headers=self.header, format=format)
+
+    def create_get_request(self, url, *args, **kwargs):
+        factory = APIRequestFactory()
+        request = factory.get(url, headers=self.header, *args, **kwargs)
+        request.user = self.user
+        force_authenticate(request, user=self.user)
+        return request
 
     def create_post_request(self, url, *args, **kwargs):
         factory = APIRequestFactory()

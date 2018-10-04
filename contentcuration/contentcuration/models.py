@@ -778,7 +778,7 @@ class ContentNode(MPTTModel, models.Model):
     freeze_authoring_data = models.BooleanField(default=False)
 
     # Dict to collect changes between staging/main trees
-    changed_staging_fields = JSONField(null=True)
+    changed_staging_fields = JSONField(null=True, default=dict)
 
     objects = TreeManager()
 
